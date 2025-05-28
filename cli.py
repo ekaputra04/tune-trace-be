@@ -69,6 +69,6 @@ if results:
         print(f"{i}. Judul  : {match['title']}")
         print(f"   Artis  : {match['artist']}")
         print(f"   Skor   : {score * 100:.2f}%")
-        print(f"   Lirik  : {match['lyric'][:200]}...\n")  # tampilkan 200 karakter pertama
+        print(f"   Lirik  : {match['lyric']}...\n")  # tampilkan 200 karakter pertama
 else:
     print("\n⚠️ Maaf, tidak ada lirik yang cocok ditemukan.")
