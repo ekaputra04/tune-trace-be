@@ -3,7 +3,7 @@ import os
 import time
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.text_processing import preprocess_text, jaccard_similarity, bm25_similarity, lsa_similarity
+from utils.text_processing import preprocess_text, jaccard_similarity, bm25_similarity, lsa_similarity, word_embeddings_similarity
 
 # === LOAD DATASET ===
 BASE_URL = os.path.dirname(__file__)
@@ -24,7 +24,8 @@ for item in dataset:
 # === USER INPUT & PREPROCESS ===
 query = input("Masukkan penggalan lirik lagu: ")
 count = int(input("Berapa hasil yang ingin ditampilkan: "))
-query_processed = preprocess_text(query)
+query_processed = preprocess_text(query)  # Untuk TF-IDF, Jaccard, BM25, LSA
+query_processed_we = preprocess_text(query, use_stemming=False)  # Untuk Word Embeddings
 
 # === TF-IDF + COSINE SIMILARITY ===
 start_time = time.time()
@@ -57,6 +58,13 @@ lsa_results = [(i, score) for i, score in enumerate(lsa_scores) if score > 0]
 lsa_results.sort(key=lambda x: x[1], reverse=True)
 lsa_time = time.time() - start_time
 
+# === WORD EMBEDDINGS SIMILARITY ===
+start_time = time.time()
+we_scores = word_embeddings_similarity(query_processed_we, documents, cache_file=os.path.join(BASE_URL, 'models', 'doc_embeddings.pkl'))
+we_results = [(i, score) for i, score in enumerate(we_scores) if score > 0]
+we_results.sort(key=lambda x: x[1], reverse=True)
+we_time = time.time() - start_time
+
 # === TAMPILKAN HASIL ===
 def display_results(results, method_name, original_data, count):
     if results:
@@ -82,3 +90,6 @@ print(f"Waktu eksekusi BM25: {bm25_time:.4f} detik")
 
 display_results(lsa_results, "LSA", original_data, count)
 print(f"Waktu eksekusi LSA: {lsa_time:.4f} detik")
+
+display_results(we_results, "Word Embeddings", original_data, count)
+print(f"Waktu eksekusi Word Embeddings: {we_time:.4f} detik")
