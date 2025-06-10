@@ -9,6 +9,8 @@ from rank_bm25 import BM25Okapi
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
+from transformers import AutoTokenizer, AutoModel
+import torch
 
 # === PREPROCESSING SETUP ===
 stemmer = StemmerFactory().create_stemmer()
@@ -68,3 +70,35 @@ def word_embeddings_similarity(query, documents, cache_file='models/doc_embeddin
     query_embedding = model.encode([query])[0]
     we_scores = cosine_similarity([query_embedding], doc_embeddings)[0]
     return we_scores
+
+def bert_similarity(query, documents, cache_file='models-bert/bert_doc_embeddings.pkl'):
+    # Load pre-trained BERT model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained('distilbert-base-multilingual-cased', cache_dir='models-bert')
+    model = AutoModel.from_pretrained('distilbert-base-multilingual-cased', cache_dir='models-bert')
+    model.eval()  # Set to evaluation mode
+
+    # Function to get BERT embeddings
+    def get_bert_embedding(text):
+        inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True, max_length=512)
+        with torch.no_grad():
+            outputs = model(**inputs)
+        # Use [CLS] token embedding (first token) or mean pooling
+        embedding = outputs.last_hidden_state[:, 0, :].squeeze().numpy()  # [CLS] token
+        return embedding
+
+    # Check if document embeddings are cached
+    if os.path.exists(cache_file):
+        with open(cache_file, 'rb') as f:
+            doc_embeddings = pickle.load(f)
+    else:
+        # Generate embeddings for all documents
+        doc_embeddings = [get_bert_embedding(doc) for doc in documents]
+        with open(cache_file, 'wb') as f:
+            pickle.dump(doc_embeddings, f)
+
+    # Generate embedding for query
+    query_embedding = get_bert_embedding(query)
+
+    # Compute cosine similarity
+    bert_scores = cosine_similarity([query_embedding], doc_embeddings)[0]
+    return bert_scores
