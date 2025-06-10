@@ -57,47 +57,47 @@ def search_lyrics(query, count):
     query_raw = query  # Raw query for BERT
 
     # TF-IDF + Cosine Similarity
-    # start_time = time.time()
-    # query_vector = vectorizer.transform([query_processed])
-    # cos_sim = cosine_similarity(query_vector, tfidf_matrix)[0]
-    # tfidf_results = [(i, score) for i, score in enumerate(cos_sim) if score > 0]
-    # tfidf_results.sort(key=lambda x: x[1], reverse=True)
-    # tfidf_time = time.time() - start_time
-
-    # # Jaccard Similarity
-    # start_time = time.time()
-    # jaccard_scores = [jaccard_similarity(query_processed, doc) for doc in documents]
-    # jaccard_results = [(i, score) for i, score in enumerate(jaccard_scores) if score > 0]
-    # jaccard_results.sort(key=lambda x: x[1], reverse=True)
-    # jaccard_time = time.time() - start_time
-
-    # # BM25
-    # start_time = time.time()
-    # bm25_scores = bm25_similarity(query_processed, documents)
-    # bm25_results = [(i, score) for i, score in enumerate(bm25_scores) if score > 0]
-    # bm25_results.sort(key=lambda x: x[1], reverse=True)
-    # bm25_time = time.time() - start_time
-
-    # # LSA
-    # start_time = time.time()
-    # lsa_scores = lsa_similarity(query_processed, documents, vectorizer, tfidf_matrix)
-    # lsa_results = [(i, score) for i, score in enumerate(lsa_scores) if score > 0]
-    # lsa_results.sort(key=lambda x: x[1], reverse=True)
-    # lsa_time = time.time() - start_time
-
-    # # Word Embeddings
-    # start_time = time.time()
-    # we_scores = word_embeddings_similarity(query_processed_we, documents, cache_file=os.path.join(BASE_DIR, 'models', 'doc_embeddings.pkl'))
-    # we_results = [(i, score) for i, score in enumerate(we_scores) if score > 0]
-    # we_results.sort(key=lambda x: x[1], reverse=True)
-    # we_time = time.time() - start_time
-
-    # BERT
     start_time = time.time()
-    bert_scores = bert_similarity(query_raw, raw_documents, cache_file=os.path.join(BASE_DIR, 'models', 'bert_doc_embeddings.pkl'))
-    bert_results = [(i, score) for i, score in enumerate(bert_scores) if score > 0]
-    bert_results.sort(key=lambda x: x[1], reverse=True)
-    bert_time = time.time() - start_time
+    query_vector = vectorizer.transform([query_processed])
+    cos_sim = cosine_similarity(query_vector, tfidf_matrix)[0]
+    tfidf_results = [(i, score) for i, score in enumerate(cos_sim) if score > 0]
+    tfidf_results.sort(key=lambda x: x[1], reverse=True)
+    tfidf_time = time.time() - start_time
+
+    # Jaccard Similarity
+    start_time = time.time()
+    jaccard_scores = [jaccard_similarity(query_processed, doc) for doc in documents]
+    jaccard_results = [(i, score) for i, score in enumerate(jaccard_scores) if score > 0]
+    jaccard_results.sort(key=lambda x: x[1], reverse=True)
+    jaccard_time = time.time() - start_time
+
+    # BM25
+    start_time = time.time()
+    bm25_scores = bm25_similarity(query_processed, documents)
+    bm25_results = [(i, score) for i, score in enumerate(bm25_scores) if score > 0]
+    bm25_results.sort(key=lambda x: x[1], reverse=True)
+    bm25_time = time.time() - start_time
+
+    # LSA
+    start_time = time.time()
+    lsa_scores = lsa_similarity(query_processed, documents, vectorizer, tfidf_matrix)
+    lsa_results = [(i, score) for i, score in enumerate(lsa_scores) if score > 0]
+    lsa_results.sort(key=lambda x: x[1], reverse=True)
+    lsa_time = time.time() - start_time
+
+    # Word Embeddings
+    start_time = time.time()
+    we_scores = word_embeddings_similarity(query_processed_we, documents, cache_file=os.path.join(BASE_DIR, 'models', 'doc_embeddings.pkl'))
+    we_results = [(i, score) for i, score in enumerate(we_scores) if score > 0]
+    we_results.sort(key=lambda x: x[1], reverse=True)
+    we_time = time.time() - start_time
+
+    # # BERT
+    # start_time = time.time()
+    # bert_scores = bert_similarity(query_raw, raw_documents, cache_file=os.path.join(BASE_DIR, 'models', 'bert_doc_embeddings.pkl'))
+    # bert_results = [(i, score) for i, score in enumerate(bert_scores) if score > 0]
+    # bert_results.sort(key=lambda x: x[1], reverse=True)
+    # bert_time = time.time() - start_time
 
     # Format hasil untuk setiap metode
     def format_results(results, method_name, original_data, count):
@@ -115,36 +115,36 @@ def search_lyrics(query, count):
         return method_results
 
     response = {
-        # "tfidf": {
-        #     "results": format_results(tfidf_results, "TF-IDF + Cosine Similarity", original_data, count),
-        #     "execution_time": round(tfidf_time, 4),
-        #     "matches_found": len(tfidf_results)
-        # },
-        # "jaccard": {
-        #     "results": format_results(jaccard_results, "Jaccard Similarity", original_data, count),
-        #     "execution_time": round(jaccard_time, 4),
-        #     "matches_found": len(jaccard_results)
-        # },
-        # "bm25": {
-        #     "results": format_results(bm25_results, "BM25", original_data, count),
-        #     "execution_time": round(bm25_time, 4),
-        #     "matches_found": len(bm25_results)
-        # },
-        # "lsa": {
-        #     "results": format_results(lsa_results, "LSA", original_data, count),
-        #     "execution_time": round(lsa_time, 4),
-        #     "matches_found": len(lsa_results)
-        # },
-        # "word_embeddings": {
-        #     "results": format_results(we_results, "Word Embeddings", original_data, count),
-        #     "execution_time": round(we_time, 4),
-        #     "matches_found": len(we_results)
-        # },
-        "bert": {
-            "results": format_results(bert_results, "BERT", original_data, count),
-            "execution_time": round(bert_time, 4),
-            "matches_found": len(bert_results)
-        }
+        "tfidf": {
+            "results": format_results(tfidf_results, "TF-IDF + Cosine Similarity", original_data, count),
+            "execution_time": round(tfidf_time, 4),
+            "matches_found": len(tfidf_results)
+        },
+        "jaccard": {
+            "results": format_results(jaccard_results, "Jaccard Similarity", original_data, count),
+            "execution_time": round(jaccard_time, 4),
+            "matches_found": len(jaccard_results)
+        },
+        "bm25": {
+            "results": format_results(bm25_results, "BM25", original_data, count),
+            "execution_time": round(bm25_time, 4),
+            "matches_found": len(bm25_results)
+        },
+        "lsa": {
+            "results": format_results(lsa_results, "LSA", original_data, count),
+            "execution_time": round(lsa_time, 4),
+            "matches_found": len(lsa_results)
+        },
+        "word_embeddings": {
+            "results": format_results(we_results, "Word Embeddings", original_data, count),
+            "execution_time": round(we_time, 4),
+            "matches_found": len(we_results)
+        },
+        # "bert": {
+        #     "results": format_results(bert_results, "BERT", original_data, count),
+        #     "execution_time": round(bert_time, 4),
+        #     "matches_found": len(bert_results)
+        # }
     }
 
     return response
