@@ -7,12 +7,12 @@ import re
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.text_processing import preprocess_text, jaccard_similarity, bm25_similarity, lsa_similarity, word_embeddings_similarity, bert_similarity
+from utils.text_processing import preprocess_text, jaccard_similarity, bm25_similarity, lsa_similarity, word_embeddings_similarity
 from flask_cors import CORS
 from typing import Optional
 
 app = Flask(__name__)
-CORS(app, resources={r"/search": {"origins": ["http://localhost:3000", "*"]}})
+CORS(app, resources={r"/search": {"origins": ["http://localhost:3000", "*"]}, r"/context-analysis": {"origins": ["http://localhost:3000", "*"]}})
 
 # === LOAD DATASET ===
 BASE_DIR = os.path.dirname(__file__)
@@ -23,12 +23,12 @@ with open(dataset_path, 'r', encoding='utf-8') as f:
 
 documents = []
 original_data = []
-raw_documents = []  # Store raw lyrics for BERT
+raw_documents = []
 
 for item in dataset:
     if 'preprocessed_lyric' in item and item['preprocessed_lyric']:
         documents.append(item['preprocessed_lyric'])
-        raw_documents.append(item.get('lyric', ''))  # Store raw lyric
+        raw_documents.append(item.get('lyric', ''))
         original_data.append(item)
 
 # === VECTORIZE (TF-IDF untuk TF-IDF dan LSA) ===
@@ -54,7 +54,6 @@ def highlight_lyric(lyric, query):
 def search_lyrics(query, count):
     query_processed = preprocess_text(query)
     query_processed_we = preprocess_text(query, use_stemming=False)
-    query_raw = query  # Raw query for BERT
 
     # TF-IDF + Cosine Similarity
     start_time = time.time()
@@ -92,13 +91,6 @@ def search_lyrics(query, count):
     we_results.sort(key=lambda x: x[1], reverse=True)
     we_time = time.time() - start_time
 
-    # # BERT
-    # start_time = time.time()
-    # bert_scores = bert_similarity(query_raw, raw_documents, cache_file=os.path.join(BASE_DIR, 'models', 'bert_doc_embeddings.pkl'))
-    # bert_results = [(i, score) for i, score in enumerate(bert_scores) if score > 0]
-    # bert_results.sort(key=lambda x: x[1], reverse=True)
-    # bert_time = time.time() - start_time
-
     # Format hasil untuk setiap metode
     def format_results(results, method_name, original_data, count):
         method_results = []
@@ -109,7 +101,7 @@ def search_lyrics(query, count):
             method_results.append({
                 "title": match.get('title'),
                 "artist": match.get('artist'),
-                "score": round(score * 100, 2),  # Convert to percentage
+                "score": round(score * 100, 2),
                 "lyric": highlighted
             })
         return method_results
@@ -139,15 +131,56 @@ def search_lyrics(query, count):
             "results": format_results(we_results, "Word Embeddings", original_data, count),
             "execution_time": round(we_time, 4),
             "matches_found": len(we_results)
-        },
-        # "bert": {
-        #     "results": format_results(bert_results, "BERT", original_data, count),
-        #     "execution_time": round(bert_time, 4),
-        #     "matches_found": len(bert_results)
-        # }
+        }
     }
 
     return response
+
+# === NEW CONTEXT ANALYSIS ENDPOINT ===
+@app.route('/context-analysis', methods=['POST'])
+def context_analysis():
+    try:
+        data = request.get_json()
+        if not data or 'queries' not in data or not isinstance(data['queries'], list):
+            return jsonify({"error": "Queries must be a non-empty list"}), 400
+
+        results = []
+        for query in data['queries']:
+            response = search_lyrics(query, count=1)  # Ambil 1 hasil per metode untuk analisis
+            context_result = {
+                "query": query,
+                "tfidf": response["tfidf"]["results"][0] if response["tfidf"]["results"] else None,
+                "jaccard": response["jaccard"]["results"][0] if response["jaccard"]["results"] else None,
+                "bm25": response["bm25"]["results"][0] if response["bm25"]["results"] else None,
+                "lsa": response["lsa"]["results"][0] if response["lsa"]["results"] else None,
+                "word_embeddings": response["word_embeddings"]["results"][0] if response["word_embeddings"]["results"] else None
+            }
+            results.append(context_result)
+
+        # Analisis konsistensi (contoh sederhana: hitung lagu yang sama di Word Embedding dan LSA)
+        consistency = {
+            "word_embeddings_lsa_matches": 0,
+            "details": []
+        }
+        reference_songs = set()
+        for result in results:
+            we_song = result["word_embeddings"]["title"] if result["word_embeddings"] else None
+            lsa_song = result["lsa"]["title"] if result["lsa"] else None
+            if we_song and lsa_song and we_song == lsa_song:
+                consistency["word_embeddings_lsa_matches"] += 1
+                consistency["details"].append({
+                    "query": result["query"],
+                    "song": we_song,
+                    "artist": result["word_embeddings"]["artist"]
+                })
+
+        return jsonify({
+            "context_results": results,
+            "consistency_analysis": consistency
+        })
+
+    except ValueError as e:
+        return jsonify({"error": "Invalid request data"}), 400
 
 # === API ROUTE ===
 @app.route('/search', methods=['POST'])
@@ -158,7 +191,6 @@ def search():
             return jsonify({"error": "Query cannot be empty"}), 400
 
         search_request = SearchRequest(**data)
-
         response = search_lyrics(search_request.query, search_request.count)
 
         if not any(response[method]["results"] for method in response):
